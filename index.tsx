@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
   ChevronRight, 
+  ChevronDown,
   FileText, 
   PlusCircle, 
   LayoutDashboard, 
@@ -115,7 +116,7 @@ interface Activity {
 // Mock Data
 const INITIAL_MATERIALS: Material[] = [
   { id: '1', name: 'Pelotas de fútbol', category: 'Deportes', stock: 15, unit: 'unidad', minStock: 5 },
-  { id: '2', name: 'Colchonetas', category: 'Gimnasio', stock: 8, unit: 'unidad', minStock: 2 },
+  { id: '2', name: 'Colchonetas', category: 'Deportes', stock: 8, unit: 'unidad', minStock: 2 },
   { id: '3', name: 'Papel Artístico', category: 'Arte', stock: 50, unit: 'pliegos', minStock: 20 },
   { id: '4', name: 'Lápices de Colores', category: 'Arte', stock: 10, unit: 'cajas', minStock: 15 },
   { id: '5', name: 'Tijeras', category: 'Arte', stock: 25, unit: 'unidad', minStock: 10 },
@@ -134,7 +135,7 @@ const INITIAL_REQUESTS: Request[] = [
       { id: 'r1', name: 'Aros de plástico', quantity: 10, unit: 'Unidad', priority: true }
     ], 
     emailAlert: false, 
-    room: 'Gimnasio A',
+    room: 'Deportes',
     activityId: 'a1'
   },
   { 
@@ -202,10 +203,21 @@ const INITIAL_ACTIVITIES: Activity[] = [
     description: 'Uso de acuarelas y mezcla de colores básicos.',
     expectedLearnings: 'Reconocimiento de colores primarios y secundarios.',
     responsible: 'Ana López'
+  },
+  { 
+    id: 'a2', 
+    title: 'Circuito Motor', 
+    date: '2023-10-28', 
+    status: 'Realizada',
+    room: 'Deportes',
+    objectives: 'Desarrollo de coordinación y equilibrio.',
+    description: 'Circuito con aros, colchonetas y saltos.',
+    expectedLearnings: 'Mejora en salto a pie junto y equilibrio dinámico.',
+    responsible: 'Carlos Ruiz'
   }
 ];
 
-const ROOM_OPTIONS = ['Purple 1', 'Purple 2', 'Yellow', 'Blue', 'Green', 'Red', 'After', 'Deportes', 'Gimnasio', 'Patio', 'Otro'];
+const ROOM_OPTIONS = ['Purple 1', 'Purple 2', 'Yellow', 'Blue', 'Green', 'Red', 'After', 'Deportes', 'Patio', 'Otro'];
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -1420,10 +1432,24 @@ const ActivityForm = ({ onSubmit, onCancel }: any) => {
 
 const Activities = ({ activities, onAddActivity, onUpdateStatus }: any) => {
   const [showForm, setShowForm] = useState(false);
+  // State to track expanded rooms. Default to open for better UX (visualizar).
+  const [expandedRooms, setExpandedRooms] = useState<{[key: string]: boolean}>({});
 
   const handleCreate = (data: any) => {
     onAddActivity(data);
     setShowForm(false);
+  };
+
+  const toggleRoom = (room: string) => {
+      setExpandedRooms(prev => ({
+          ...prev,
+          [room]: prev[room] === undefined ? false : !prev[room]
+      }));
+  };
+
+  // Check if room is expanded (default true if undefined)
+  const isExpanded = (room: string) => {
+      return expandedRooms[room] !== false;
   };
 
   const getStatusColor = (status: string) => {
@@ -1435,13 +1461,25 @@ const Activities = ({ activities, onAddActivity, onUpdateStatus }: any) => {
       }
   };
 
+  // Group activities by room
+  const activitiesByRoom = useMemo(() => {
+      const groups: { [key: string]: Activity[] } = {};
+      activities.forEach((act: Activity) => {
+          if (!groups[act.room]) groups[act.room] = [];
+          groups[act.room].push(act);
+      });
+      return groups;
+  }, [activities]);
+
+  const sortedRooms = Object.keys(activitiesByRoom).sort();
+
   return (
     <div className="space-y-6">
       {!showForm && (
         <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Planificación de Actividades</h2>
-            <p className="text-gray-500 mt-1">Gestión de experiencias de aprendizaje</p>
+            <p className="text-gray-500 mt-1">Gestión de experiencias de aprendizaje por sala</p>
           </div>
           <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold px-5 py-3 rounded-lg transition-all shadow-sm">
             <PlusCircle size={20} />
@@ -1452,51 +1490,77 @@ const Activities = ({ activities, onAddActivity, onUpdateStatus }: any) => {
 
       {showForm && <ActivityForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />}
 
-      <div className="grid grid-cols-1 gap-6">
-        {activities.map((a: Activity) => (
-          <div key={a.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-4">
-               <div>
-                   <h3 className="text-xl font-bold text-gray-900">{a.title}</h3>
-                   <div className="flex flex-wrap gap-2 mt-1">
-                       <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded flex items-center gap-1">
-                          <User size={12} /> {a.responsible}
-                       </span>
-                       <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded flex items-center gap-1">
-                          <MapPin size={12} /> {a.room}
-                       </span>
-                       <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded flex items-center gap-1">
-                          <CalendarIcon size={12} /> {new Date(a.date).toLocaleDateString()}
-                       </span>
-                   </div>
-               </div>
-               <select 
-                  value={a.status}
-                  onChange={(e) => onUpdateStatus(a.id, e.target.value)}
-                  className={`text-xs font-bold px-2 py-1 rounded-lg border-none outline-none cursor-pointer ${getStatusColor(a.status)}`}
-               >
-                   <option value="Programada">Programada</option>
-                   <option value="Realizada">Realizada</option>
-                   <option value="Cancelada">Cancelada</option>
-               </select>
-            </div>
+      <div className="space-y-6">
+        {sortedRooms.length > 0 ? (
+            sortedRooms.map(room => (
+                <div key={room} className="border border-amber-100 rounded-xl bg-white overflow-hidden shadow-sm">
+                    <button 
+                        onClick={() => toggleRoom(room)}
+                        className="w-full flex items-center justify-between p-4 bg-amber-50/50 hover:bg-amber-50 transition-colors text-left"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+                                {activitiesByRoom[room].length}
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-800">{room}</h3>
+                        </div>
+                        {isExpanded(room) ? <ChevronDown size={20} className="text-gray-400"/> : <ChevronRight size={20} className="text-gray-400"/>}
+                    </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="bg-amber-50/50 p-3 rounded-lg border border-amber-100">
-                    <h4 className="font-bold text-amber-700 mb-1 flex items-center gap-1"><Target size={14}/> Objetivos</h4>
-                    <p className="text-gray-700">{a.objectives}</p>
+                    {isExpanded(room) && (
+                        <div className="p-4 bg-white border-t border-amber-50">
+                            <div className="grid grid-cols-1 gap-4">
+                                {activitiesByRoom[room].map((a: Activity) => (
+                                <div key={a.id} className="bg-white p-5 rounded-xl border border-gray-100 hover:shadow-md transition-all">
+                                    <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-900">{a.title}</h3>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                            <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded flex items-center gap-1">
+                                                <User size={12} /> {a.responsible}
+                                            </span>
+                                            <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded flex items-center gap-1">
+                                                <CalendarIcon size={12} /> {new Date(a.date).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <select 
+                                        value={a.status}
+                                        onChange={(e) => onUpdateStatus(a.id, e.target.value)}
+                                        className={`text-xs font-bold px-2 py-1 rounded-lg border-none outline-none cursor-pointer ${getStatusColor(a.status)}`}
+                                    >
+                                        <option value="Programada">Programada</option>
+                                        <option value="Realizada">Realizada</option>
+                                        <option value="Cancelada">Cancelada</option>
+                                    </select>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                        <div className="bg-amber-50/50 p-3 rounded-lg border border-amber-100">
+                                            <h4 className="font-bold text-amber-700 mb-1 flex items-center gap-1"><Target size={14}/> Objetivos</h4>
+                                            <p className="text-gray-700">{a.objectives}</p>
+                                        </div>
+                                        <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                                            <h4 className="font-bold text-blue-700 mb-1 flex items-center gap-1"><BookOpen size={14}/> Descripción</h4>
+                                            <p className="text-gray-700">{a.description}</p>
+                                        </div>
+                                        <div className="bg-green-50/50 p-3 rounded-lg border border-green-100">
+                                            <h4 className="font-bold text-green-700 mb-1 flex items-center gap-1"><ActivityIcon size={14}/> Aprendizajes</h4>
+                                            <p className="text-gray-700">{a.expectedLearnings}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
-                <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                    <h4 className="font-bold text-blue-700 mb-1 flex items-center gap-1"><BookOpen size={14}/> Descripción</h4>
-                    <p className="text-gray-700">{a.description}</p>
-                </div>
-                <div className="bg-green-50/50 p-3 rounded-lg border border-green-100">
-                    <h4 className="font-bold text-green-700 mb-1 flex items-center gap-1"><ActivityIcon size={14}/> Aprendizajes</h4>
-                    <p className="text-gray-700">{a.expectedLearnings}</p>
-                </div>
+            ))
+        ) : (
+            <div className="text-center py-12 text-gray-400 bg-white rounded-xl border border-gray-100 border-dashed">
+                <p>No hay actividades registradas aún.</p>
             </div>
-          </div>
-        ))}
+        )}
       </div>
     </div>
   );
